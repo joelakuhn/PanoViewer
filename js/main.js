@@ -10,12 +10,14 @@ function PanoViewer(element, textureUrl) {
     this.onPointerDownLat,
     this.fov = 70, // Field of View
     this.isUserInteracting = false,
+    this.hasUserInteracted = false,
     this.lon = 0,
     this.lat = 0,
     this.phi = 0,
     this.theta = 0,
     this.onMouseDownMouseX = 0,
     this.onMouseDownMouseY = 0,
+    this.pinchStartDistance = 0,
     this.width = 650, // int || window.innerWidth
     this.height = 650, // int || window.innerHeight
     this.ratio = this.width / this.height;
@@ -49,12 +51,34 @@ PanoViewer.prototype.init = function() {
     this.renderer = new THREE.WebGLRenderer({antialias: true});
     this.renderer.setSize(this.width, this.height);
     this.element.appendChild(this.renderer.domElement);
+
+    // Start Interacting
     this.bindEvent(this.element, 'mousedown', this.onDocumentMouseDown);
     this.bindEvent(this.element, 'touchstart', this.onDocumentMouseDown);
+
+    // Zooming
     this.bindEvent(this.element, 'mousewheel', this.onDocumentMouseWheel);
     this.bindEvent(this.element, 'DOMMouseScroll', this.onDocumentMouseWheel);
+    this.bindEvent(this.element, 'touchmove', this.onPinch);
+    this.bindEvent(this.element, 'touchend', this.onPinchEnd);
+
+    // Interact
+    this.bindEvent(this.element, 'mousemove', this.onDocumentMouseMove);
+    this.bindEvent(this.element, 'touchmove', this.onDocumentMouseMove);
+
+    // Stop Interacting
+    this.bindEvent(this.element, 'mouseup', this.onDocumentMouseUp);
+    this.bindEvent(this.element, 'touchend', this.onDocumentMouseUp);
+    this.bindEvent(this.element, 'mouseout', this.onDocumentMouseUp);
+
+    // Resizing
     this.bindEvent(window, 'resize', this.onWindowResized);
     this.onWindowResized(null);
+
+    // this.createStartButton();
+}
+PanoViewer.prototype.createStartButton = function() {
+
 }
 PanoViewer.prototype.getInteractionEventObject = function(event) {
     if ('touches' in event) {
@@ -68,8 +92,6 @@ PanoViewer.prototype.onWindowResized = function(event) {
     this.ratio = window.innerWidth / window.innerHeight;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.camera.projectionMatrix.makePerspective(this.fov, window.innerWidth / window.innerHeight, 1, 1100);
-    // this.renderer.setSize(this.width, this.height);
-    // this.camera.projectionMatrix.makePerspective(this.fov, this.ratio, 1, 1100);
 }
 PanoViewer.prototype.onDocumentMouseDown = function(event) {
     event.preventDefault();
@@ -80,22 +102,24 @@ PanoViewer.prototype.onDocumentMouseDown = function(event) {
     this.onPointerDownLon = this.lon;
     this.onPointerDownLat = this.lat;
     this.isUserInteracting = true;
-    this.bindEvent(this.element, 'mousemove', this.onDocumentMouseMove);
-    this.bindEvent(this.element, 'touchmove', this.onDocumentMouseMove);
-    this.bindEvent(this.element, 'mouseup', this.onDocumentMouseUp);
-    this.bindEvent(this.element, 'touchend', this.onDocumentMouseUp);
+    this.hasUserInteracted = true;
 }
 PanoViewer.prototype.onDocumentMouseMove = function(event) {
+    if (!this.isUserInteracting) return;
+
     var interaction = this.getInteractionEventObject(event);
     if (interaction == null) return;
+
     this.lon = (interaction.clientX - this.onPointerDownPointerX) * -0.175 + this.onPointerDownLon;
     this.lat = (interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
 }
 PanoViewer.prototype.onDocumentMouseUp = function(event) {
-    this.unbindEvent(this.element, 'mousemove');
-    this.unbindEvent(this.element, 'touchmove');
-    this.unbindEvent(this.element, 'mouseup');
-    this.unbindEvent(this.element, 'touchend');
+    if (!this.isUserInteracting) return;
+
+    var interaction = this.getInteractionEventObject(event);
+    if (interaction == null) return;
+
+    this.isUserInteracting = false;
 }
 PanoViewer.prototype.onDocumentMouseWheel = function(event) {
     // WebKit
@@ -113,6 +137,31 @@ PanoViewer.prototype.onDocumentMouseWheel = function(event) {
     }
     this.camera.projectionMatrix.makePerspective(this.fov, this.ratio, 1, 1100);
 }
+PanoViewer.prototype.onPinch = function(event) {
+    if (event.touches.length === 2) {
+        if (this.pinchStartDistance === 0) {
+            this.pinchStartDistance = Math.hypot(
+                event.touches[0].pageX - event.touches[1].pageX,
+                event.touches[0].pageY - event.touches[1].pageY);
+            this.pinchStartFov = this.fov
+        }
+        else {
+            var dist = Math.hypot(
+                event.touches[0].pageX - event.touches[1].pageX,
+                event.touches[0].pageY - event.touches[1].pageY);
+            this.fov = this.pinchStartFov * this.pinchStartDistance/dist;
+            if (this.fov < 4 || this.fov > 90) {
+                this.fov = (this.fov < 4) ? 4 : 90;
+            }
+            this.camera.projectionMatrix.makePerspective(this.fov, this.ratio, 1, 1100);
+        }
+    }
+}
+PanoViewer.prototype.onPinchEnd = function(event) {
+    if (event.touches.length === 1) {
+        this.pinchStartDistance = 0;
+    }
+}
 PanoViewer.prototype.animate = function() {
     var _this = this;
     requestAnimationFrame(function() {
@@ -121,7 +170,7 @@ PanoViewer.prototype.animate = function() {
     this.render();
 }
 PanoViewer.prototype.render = function() {
-    if (this.isUserInteracting === false) {
+    if (this.hasUserInteracted === false) {
         this.lon += .05;
     }
     this.lat = Math.max(-85, Math.min(85, this.lat));
