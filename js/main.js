@@ -28,7 +28,8 @@ function PanoViewer(element, textureUrl) {
 	this.ratio = this.width / this.height;
 	this.overlayElement = null;
 	var _this = this;
-	this.texture = THREE.ImageUtils.loadTexture(textureUrl, THREE.UVMapping(), function() {
+	var textureLoader = new THREE.TextureLoader();
+	this.texture = textureLoader.load(textureUrl, function() {
 		_this.init();
 		// _this.animate();
 	});
@@ -109,7 +110,17 @@ PanoViewer.prototype.getInteractionEventObject = function(event) {
 }
 
 PanoViewer.prototype.updateProjection = function() {
-	this.camera.projectionMatrix.makePerspective(this.fov, this.ratio, 1, 1100);
+	var fov = this.fov,
+		aspect = this.ratio,
+		near = 1,
+		far = 1100;
+
+	var ymax = near * Math.tan( THREE.Math.degToRad( fov * 0.5 ) );
+	var ymin = - ymax;
+	var xmin = ymin * aspect;
+	var xmax = ymax * aspect;
+
+	this.camera.projectionMatrix.makePerspective(xmin, xmax, ymin, ymax, near, far);
 }
 
 // Overlay
@@ -185,7 +196,7 @@ PanoViewer.prototype.onMouseMove = function(event) {
 	if (interaction == null) return;
 
 	this.lon = (interaction.clientX - this.onPointerDownPointerX) * -0.175 + this.onPointerDownLon;
-	this.lat = (interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
+	this.lat = (interaction.clientY - this.onPointerDownPointerY) * 0.175 + this.onPointerDownLat;
 	// this.logMomentum(this.lon, this.lat);
 	this.render();
 	return false;
