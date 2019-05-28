@@ -43,7 +43,8 @@ PanoViewer.prototype.init = function() {
 	this.scene = new THREE.Scene();
 	this.texture.minFilter = THREE.LinearFilter;
 	var mesh = new THREE.Mesh(new THREE.SphereGeometry(500, 60, 40), new THREE.MeshBasicMaterial({map: this.texture}));
-	// mesh.scale.x = -1;
+	mesh.scale.y = -1;
+	mesh.scale.x = -1;
 	this.scene.add(mesh);
 	this.renderer = new THREE.WebGLRenderer({antialias: true});
 	this.renderer.setSize(this.width, this.height);
