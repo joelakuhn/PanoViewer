@@ -17,6 +17,7 @@ function PanoViewer(element, textureUrl) {
 	this.hasUserInteracted = false;
 	this.lon = 0;
 	this.lat = 0;
+	this.movementLog = [];
 	this.phi = 0;
 	this.theta = 0;
 	this.onMouseDownMouseX = 0;
@@ -28,7 +29,7 @@ function PanoViewer(element, textureUrl) {
 	this.ratio = this.width / this.height;
 	this.overlayElement = null;
 	var _this = this;
-	this.texture = THREE.ImageUtils.loadTexture(textureUrl, THREE.UVMapping(), function() {
+	this.texture = THREE.ImageUtils.loadTexture(textureUrl, THREE.UVMapping, function() {
 		_this.init();
 		// _this.animate();
 	});
@@ -161,6 +162,7 @@ PanoViewer.prototype.onWindowResized = function(event) {
 	this.ratio = elWidth / elHeight;
 	this.renderer.setSize(elWidth, elHeight);
 	this.updateProjection();
+	this.render();
 }
 
 // Panning
@@ -175,7 +177,7 @@ PanoViewer.prototype.onMouseDown = function(event) {
 	this.onPointerDownLat = this.lat;
 	this.isUserInteracting = true;
 	this.hasUserInteracted = true;
-	// this.startMomentum();
+	this.stopDriftOut();
 	return false;
 }
 PanoViewer.prototype.onMouseMove = function(event) {
@@ -186,12 +188,13 @@ PanoViewer.prototype.onMouseMove = function(event) {
 
 	this.lon = (interaction.clientX - this.onPointerDownPointerX) * -0.175 + this.onPointerDownLon;
 	this.lat = (interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
-	// this.logMomentum(this.lon, this.lat);
-	this.render();
+	this.movementLog.push([this.lat, this.lon]);
 	return false;
 }
 PanoViewer.prototype.onMouseUp = function(event) {
 	if (!this.isUserInteracting) return;
+
+	this.startDriftOut();
 
 	var interaction = this.getInteractionEventObject(event);
 	if (interaction == null) return;
@@ -249,15 +252,47 @@ PanoViewer.prototype.onPinchEnd = function(event) {
 	}
 }
 
+// Momentum
+
+PanoViewer.prototype.startDriftOut = function() {
+	if (this.movementLog.length < 2) return;
+	var end = this.movementLog.pop();
+	var start = this.movementLog.pop();
+	this.dlat = end[0] - start[0];
+	this.dlon = end[1] - start[1];
+	this.movementLog = [];
+	this.driftOut();
+}
+
+PanoViewer.prototype.stopDriftOut = function() {
+	this.movementLog = [];
+	this.dlat = 0;
+	this.dlon = 0;
+	if (this.driftFrame) {
+		cancelAnimationFrame(this.driftFrame);
+	}
+}
+
+PanoViewer.prototype.driftOut = function() {
+	var _this = this;
+
+	if (Math.abs(this.dlon) < 0.1 && Math.abs(this.dlat) < 0.1) return;
+
+	this.lat = this.lat + this.dlat;
+	this.lon = this.lon + this.dlon;
+
+	this.dlon /= 1.1;
+	this.dlat /= 1.1;
+
+	this.render();
+
+	this.driftFrame = requestAnimationFrame(function() {
+		_this.driftOut();
+	});
+}
+
 // Draw Screean
 
-// PanoViewer.prototype.animate = function() {
-// 	var _this = this;
-// 	requestAnimationFrame(function() {
-// 		_this.animate();
-// 	});
-// 	this.render();
-// }
 PanoViewer.prototype.render = function() {
 	if (this.hasUserInteracted === false) {
 		this.lon += .05;
@@ -273,4 +308,5 @@ PanoViewer.prototype.render = function() {
 }
 
 window.pano = new PanoViewer(document.getElementById('demo'), 'img/warrior-row-c-compressed.jpg');
+// window.pano = new PanoViewer(document.getElementById('demo'), 'img/warrior-row-c-compressed.jpg');
 // new PanoViewer(document.getElementById('demo'), 'img/pierson.jpg');
