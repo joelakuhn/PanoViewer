@@ -29,7 +29,7 @@ function PanoViewer(element, textureUrl) {
 	this.ratio = this.width / this.height;
 	this.overlayElement = null;
 	var _this = this;
-	this.texture = THREE.ImageUtils.loadTexture(textureUrl, THREE.UVMapping, function() {
+	this.texture = new THREE.TextureLoader().load(textureUrl, function() {
 		_this.init();
 		// _this.animate();
 	});
@@ -41,8 +41,9 @@ PanoViewer.prototype.init = function() {
 	// 3js Scene
 	this.camera = new THREE.PerspectiveCamera(this.fov, this.ratio, 1, 1000);
 	this.scene = new THREE.Scene();
+	this.texture.minFilter = THREE.LinearFilter;
 	var mesh = new THREE.Mesh(new THREE.SphereGeometry(500, 60, 40), new THREE.MeshBasicMaterial({map: this.texture}));
-	mesh.scale.x = -1;
+	// mesh.scale.x = -1;
 	this.scene.add(mesh);
 	this.renderer = new THREE.WebGLRenderer({antialias: true});
 	this.renderer.setSize(this.width, this.height);
@@ -110,7 +111,13 @@ PanoViewer.prototype.getInteractionEventObject = function(event) {
 }
 
 PanoViewer.prototype.updateProjection = function() {
-	this.camera.projectionMatrix.makePerspective(this.fov, this.ratio, 1, 1100);
+	var near = 1;
+	var far = 1000;
+	var ymax = near * Math.tan( THREE.Math.degToRad( this.fov * 0.5 ) );
+	var ymin = - ymax;
+	var xmin = ymin * this.ratio;
+	var xmax = ymax * this.ratio;
+	this.camera.projectionMatrix.makePerspective(xmin, xmax, ymin, ymax, near, far);
 }
 
 // Overlay
@@ -187,7 +194,7 @@ PanoViewer.prototype.onMouseMove = function(event) {
 	if (interaction == null) return;
 
 	this.lon = (interaction.clientX - this.onPointerDownPointerX) * -0.175 + this.onPointerDownLon;
-	this.lat = (interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
+	this.lat = -(interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
 	this.movementLog.push([this.lat, this.lon]);
 	return false;
 }
