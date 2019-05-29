@@ -26,16 +26,23 @@ function PanoViewer(element, textureUrl) {
 	this.interactionEvents = [];
 	this.width = 650; // int || window.innerWidth
 	this.height = 650; // int || window.innerHeight
+	this.maxHeight = 650;
 	this.ratio = this.width / this.height;
 	this.overlayElement = null;
 	var _this = this;
 	this.texture = new THREE.TextureLoader().load(textureUrl, function() {
 		_this.init();
-		// _this.animate();
+		_this.animate();
 	});
+	this.initCSS();
 }
 
 // Init
+
+PanoViewer.prototype.initCSS = function() {
+	this.element.style.position = 'relative';
+	this.element.style.height = this.maxHeight + 'px';
+}
 
 PanoViewer.prototype.init = function() {
 	// 3js Scene
@@ -127,21 +134,34 @@ PanoViewer.prototype.createPanoOverlay = function() {
 	this.overlayElement = document.createElement('button');
 	this.overlayElement.setAttribute('class', 'pano-overlay');
 	this.overlayElement.innerText = 'Tap to Interact';
-	this.bindEvent(this.overlayElement, 'click', this.togglePanoOverlay, false);
+  this.overlayElement.setAttribute(
+  	'style',
+  	'position: absolute; top: 0; right: 0; width: 100%; height: 100%;'
+  	+ 'font-size: 2em; font-weight: lighter;'
+  	+ 'background-color: rgba(0,0,0,0.2); border: 0; color: #fff;');
+  this.bindEvent(this.overlayElement, 'click', this.togglePanoOverlay, false);
 
 	this.element.appendChild(this.overlayElement);
 }
 PanoViewer.prototype.togglePanoOverlay = function() {
 	var cls = this.overlayElement.getAttribute('class');
 	if (!cls.match(/interacting/)) {
+		this.hasUserInteracted = true;
 		this.overlayElement.setAttribute('class', cls + ' interacting');
-		this.overlayElement.innerHTML = '<span class="sr-only">Stop Panoramic</span>&#x2715;';
+		this.overlayElement.innerHTML =
+			'<span style="position: absolute; height: 0; width: 0; left: -10000px;">Stop Panoramic</span>'
+			+ '<span style="font-family: arial;">&#x2715;</span>';
+		this.overlayElement.style.width = '2em';
+		this.overlayElement.style.height = '2em';
 		this.scrollIntoView();
 		this.bindUserInteractionEvents();
 	}
 	else {
 		this.overlayElement.setAttribute('class', 'pano-overlay');
 		this.overlayElement.innerText = 'Tap to Interact';
+		this.overlayElement.style.width = '100%';
+		this.overlayElement.style.height = '100%';
+
 		this.unbindUserInteractionEvents();
 	}
 }
@@ -167,6 +187,11 @@ PanoViewer.prototype.onWindowResized = function(event) {
 		elHeight = winHeight - 50;
 		this.element.style.height = elHeight + "px";
 	}
+	else if (elHeight < (winHeight - 50) && elHeight < this.maxHeight) {
+		elHeight = Math.min(this.maxHeight, winHeight - 50);
+		this.element.style.height = elHeight + "px";
+
+	}
 	this.ratio = elWidth / elHeight;
 	this.renderer.setSize(elWidth, elHeight);
 	this.updateProjection();
@@ -184,7 +209,6 @@ PanoViewer.prototype.onMouseDown = function(event) {
 	this.onPointerDownLon = this.lon;
 	this.onPointerDownLat = this.lat;
 	this.isUserInteracting = true;
-	this.hasUserInteracted = true;
 	this.stopDriftOut();
 	return false;
 }
@@ -197,6 +221,8 @@ PanoViewer.prototype.onMouseMove = function(event) {
 	this.lon = (interaction.clientX - this.onPointerDownPointerX) * -0.175 + this.onPointerDownLon;
 	this.lat = -(interaction.clientY - this.onPointerDownPointerY) * -0.175 + this.onPointerDownLat;
 	this.movementLog.push([this.lat, this.lon]);
+
+	this.render();
 	return false;
 }
 PanoViewer.prototype.onMouseUp = function(event) {
@@ -299,12 +325,20 @@ PanoViewer.prototype.driftOut = function() {
 	});
 }
 
+PanoViewer.prototype.animate = function() {
+	if (this.hasUserInteracted === false) {
+		this.lon += 0.05;
+		this.render();
+		var _this = this;
+		requestAnimationFrame(function() {
+			_this.animate();
+		});
+	}
+}
+
 // Draw Screean
 
 PanoViewer.prototype.render = function() {
-	if (this.hasUserInteracted === false) {
-		this.lon += .05;
-	}
 	this.lat = Math.max(-85, Math.min(85, this.lat));
 	this.phi = THREE.Math.degToRad(90 - this.lat);
 	this.theta = THREE.Math.degToRad(this.lon);
@@ -315,6 +349,12 @@ PanoViewer.prototype.render = function() {
 	this.renderer.render(this.scene, this.camera);
 }
 
-window.pano = new PanoViewer(document.getElementById('demo'), 'img/warrior-row-c-compressed.jpg');
-// window.pano = new PanoViewer(document.getElementById('demo'), 'img/warrior-row-c-compressed.jpg');
-// new PanoViewer(document.getElementById('demo'), 'img/pierson.jpg');
+// Auto-init .pano-viewer[data-src] elements.
+
+var viewer_elements = document.getElementsByClassName('pano-viewer');
+for (var i=0; i<viewer_elements.length; i++) {
+	var src = viewer_elements[i].getAttribute('data-src');
+	if (src) {
+		new PanoViewer(viewer_elements[i], src);
+	}
+}
