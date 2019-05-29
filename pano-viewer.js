@@ -4,31 +4,40 @@ const MAX_ZOOM = 15;
 const MIN_ZOOM = 80;
 
 function PanoViewer(element, textureUrl) {
+	this.element = element; // Inject this.scene into this
+
 	this.camera = null;
 	this.scene = null;
-	this.element = element; // Inject this.scene into this
 	this.renderer = null;
+
 	this.onPointerDownPointerX = null;
 	this.onPointerDownPointerY = null;
 	this.onPointerDownLon = null;
 	this.onPointerDownLat = null;
-	this.fov = 70; // Field of View
-	this.isUserInteracting = false;
-	this.hasUserInteracted = false;
-	this.lon = 0;
-	this.lat = 0;
-	this.movementLog = [];
-	this.phi = 0;
-	this.theta = 0;
+
 	this.onMouseDownMouseX = 0;
 	this.onMouseDownMouseY = 0;
 	this.pinchStartDistance = 0;
+
+	this.fov = 70; // Field of View
+	this.lon = 0;
+	this.lat = 0;
+	this.phi = 0;
+	this.theta = 0;
+
+	this.isUserInteracting = false;
+	this.hasUserInteracted = false;
+
+	this.movementLog = [];
 	this.interactionEvents = [];
-	this.width = 650; // int || window.innerWidth
-	this.height = 650; // int || window.innerHeight
+
+	this.width = 650;
+	this.height = 650;
 	this.maxHeight = 650;
 	this.ratio = this.width / this.height;
+
 	this.overlayElement = null;
+
 	var _this = this;
 	this.texture = new THREE.TextureLoader().load(textureUrl, function() {
 		_this.init();
@@ -63,8 +72,6 @@ PanoViewer.prototype.init = function() {
 	// Resizing
 	this.bindEvent(window, 'resize', this.onWindowResized, false);
 	this.onWindowResized(null);
-
-	this.render();
 }
 
 PanoViewer.prototype.bindUserInteractionEvents = function() {
@@ -143,6 +150,7 @@ PanoViewer.prototype.createPanoOverlay = function() {
 
 	this.element.appendChild(this.overlayElement);
 }
+
 PanoViewer.prototype.togglePanoOverlay = function() {
 	var cls = this.overlayElement.getAttribute('class');
 	if (!cls.match(/interacting/)) {
@@ -325,6 +333,8 @@ PanoViewer.prototype.driftOut = function() {
 	});
 }
 
+// Initial camera drift to indicate this is a pannable image.
+
 PanoViewer.prototype.animate = function() {
 	if (this.hasUserInteracted === false) {
 		this.lon += 0.05;
@@ -358,3 +368,4 @@ for (var i=0; i<viewer_elements.length; i++) {
 		new PanoViewer(viewer_elements[i], src);
 	}
 }
+
