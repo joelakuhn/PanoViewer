@@ -1,6 +1,6 @@
 # PanoViewer
 
-PanoViewer is a simple 360 image viewer built on THREE js, building on the work of (https://github.com/ NorikDavtian/ThreeJS-360-Panorama)[NorikDavtian/ThreeJS-360-Panorama].
+PanoViewer is a simple 360 image viewer built on THREE js, building on (NorikDavtian/ThreeJS-360-Panorama)[https://github.com/ NorikDavtian/ThreeJS-360-Panorama].
 
 ## Usage
 
