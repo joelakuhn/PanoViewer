@@ -128,6 +128,17 @@ PanoViewer.prototype.updateProjection = function() {
 	this.camera.projectionMatrix.makePerspective(xmin, xmax, ymin, ymax, near, far);
 }
 
+PanoViewer.prototype.getOffsetTop = function(elem) {
+  var offsetTop = 0;
+  do {
+    if ( !isNaN( elem.offsetTop ) )
+    {
+        offsetTop += elem.offsetTop;
+    }
+  } while( elem = elem.offsetParent );
+  return offsetTop;
+}
+
 // Overlay
 
 PanoViewer.prototype.createPanoOverlay = function() {
@@ -167,9 +178,10 @@ PanoViewer.prototype.togglePanoOverlay = function() {
 }
 
 PanoViewer.prototype.scrollIntoView = function() {
-	if (this.element.offsetTop < window.scrollY) {
+	var offsetTop = this.getOffsetTop(this.element);
+	if (offsetTop < window.scrollY) {
 		var _this = this;
-		var newY = Math.max(window.scrollY - 20, this.element.offsetTop);
+		var newY = Math.max(window.scrollY - 20, offsetTop);
 		window.scrollTo(window.scrollX, newY);
 		requestAnimationFrame(function() {
 			_this.scrollIntoView();
